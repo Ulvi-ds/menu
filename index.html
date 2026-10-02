@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Qəbələ Restaurant - Menyu</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,Helvetica,sans-serif;background:#f5f5f5;color:#222}
+.header{background:#171717;color:#fff;text-align:center;padding:25px 15px 20px}
+.logo{width:75px;height:75px;border-radius:50%;background:#c49a55;margin:auto;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:bold;border:3px solid #fff}
+.header h1{margin-top:12px;font-size:27px}
+.header p{color:#ccc;margin-top:5px;font-size:14px}
+.search-box{padding:15px;background:#fff;position:sticky;top:0;z-index:20}
+.search-box input{width:100%;padding:13px 16px;border:1px solid #ddd;border-radius:25px;font-size:15px;outline:none}
+.categories{display:flex;overflow-x:auto;gap:8px;padding:12px;background:#fff;border-bottom:1px solid #ddd;position:sticky;top:73px;z-index:19}
+.categories button{flex-shrink:0;border:none;padding:10px 15px;border-radius:20px;background:#eee;cursor:pointer;font-size:13px}
+.categories button.active{background:#171717;color:#fff}
+.container{max-width:1100px;margin:auto;padding:18px 12px 50px}
+.section{margin-bottom:35px}
+.section-title{font-size:23px;margin-bottom:15px;border-left:5px solid #c49a55;padding-left:10px}
+.note{color:#a33;font-size:13px;margin:-8px 0 12px 15px}
+.products{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.card{background:#fff;border-radius:13px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08);cursor:pointer;transition:.2s}
+.card:hover{transform:translateY(-2px)}
+.card img{width:100%;height:140px;object-fit:contain;display:block;background:#ddd}
+.card-content{padding:12px}
+.card h3{font-size:14px;margin-bottom:6px}
+.description{color:#777;font-size:12px;line-height:1.4;min-height:32px}
+.price{margin-top:10px;color:#b48742;font-size:17px;font-weight:bold}
+.no-price{color:#777;font-size:13px;font-weight:normal}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100;align-items:center;justify-content:center;padding:15px}
+.modal-box{background:#fff;width:100%;max-width:500px;border-radius:15px;overflow:hidden;position:relative}
+.modal-box img{width:100%;height:280px;object-fit:contain;background:#ddd}
+.modal-content{padding:20px}
+.modal-content h2{margin-bottom:10px}
+.modal-content p{color:#666;line-height:1.5}
+.modal-price{color:#b48742;font-size:22px;font-weight:bold;margin-top:15px}
+.close{position:absolute;top:10px;right:10px;width:35px;height:35px;border:none;border-radius:50%;background:#fff;font-size:22px;cursor:pointer}
+.footer{background:#171717;color:#aaa;text-align:center;padding:25px;font-size:13px}
+@media(min-width:800px){.products{grid-template-columns:repeat(3,1fr)}.card img{height:210px}.card h3{font-size:16px}}
+</style>
+</head>
+<body>
+
+<header class="header">
+    <div class="logo">QR</div>
+    <h1>Qəbələ Restaurant</h1>
+    <p>Milli mətbəx • Kabab • İsti yeməklər</p>
+</header>
+
+<div class="search-box">
+    <input type="text" id="search" placeholder="🔍 Menyuda axtar..." oninput="searchProducts()">
+</div>
+
+<nav class="categories">
+    <button class="active" onclick="showCategory('all',this)">Hamısı</button>
+    <button onclick="showCategory('kabab',this)">Kabablar</button>
+    <button onclick="showCategory('isti',this)">İsti yeməklər</button>
+    <button onclick="showCategory('soup',this)">Şorbalar</button>
+    <button onclick="showCategory('fish',this)">Balıqlar</button>
+    <button onclick="showCategory('salad',this)">Salatlar</button>
+    <button onclick="showCategory('drink',this)">İçkilər</button>
+    <button onclick="showCategory('alcohol',this)">Spirtli içkilər</button>
+</nav>
+
+<main class="container" id="menu"></main>
+
+<footer class="footer">© 2026 Qəbələ Restaurant</footer>
+
+<div class="modal" id="modal" onclick="closeOutside(event)">
+    <div class="modal-box">
+        <button class="close" onclick="closeModal()">×</button>
+        <img id="modalImage" src="" alt="" onerror="this.onerror=null;this.src=PLACEHOLDER">
+        <div class="modal-content">
+            <h2 id="modalTitle"></h2>
+            <p id="modalDescription"></p>
+            <div class="modal-price" id="modalPrice"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+/* Şəkil tapılmasa göstəriləcək ehtiyat şəkil (xarici sayta bağlı deyil) */
+const PLACEHOLDER = "data:image/svg+xml;utf8," + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect width="400" height="300" fill="#ddd"/><text x="200" y="165" font-size="60" text-anchor="middle">🍽️</text></svg>'
+);
+
+/* =========================================================
+   MENYU
+   Format: [kateqoriya, ad, qiymət (null = sonra əlavə olunacaq), şəkil faylı, təsvir]
+   Qiymət əlavə etmək üçün null yerinə rəqəm yazın, məsələn 12 və ya 3.5
+   Bütün şəkillər "images" qovluğunda olmalıdır.
+   ========================================================= */
+const raw = [
+// KABABLAR
+["kabab","Toyuq kababı",7,"toyuq_kabab.png","Marinad edilmiş toyuq əti, soğan və göyərti."],
+["kabab","İçalat (dana)",7,"icalat.png","Dana içalatından hazırlanmış milli kabab."],
+["kabab","İçalat (quzu)",9,"icalat_quzu.png","Quzu içalatından hazırlanmış kabab."],
+["kabab","Tikə kabab",10,"tike_kabab.png","Manqalda bişirilmiş yumşaq ət tikələri."],
+["kabab","Antrikot",12,"antrikot.png","Manqalda bişirilmiş antrikot."],
+["kabab","Basdırma kabab",11,"basdirma.png","Xüsusi marinadda hazırlanmış basdırma kabab."],
+["kabab","Kartof külləmə",3,"kartof_kulleme.png","Köz üstündə bişirilmiş kartof."],
+["kabab","Hinduşka",null,"hinduska.png","Manqalda hazırlanmış hinduşka."],
+["kabab","Quyruq kababı",9,"quyruq.png","Manqalda bişirilmiş quzu quyruğu."],
+["kabab","Kartof quyruq",4,"kartof_quyruq.png","Kartof və quzu quyruğu."],
+["kabab","Xan kababı",10,"xan_kababi.png","Milli mətbəxin xüsusi kababı."],
+["kabab","Lülə döymə",10,"lule.png","Əllə döyülmüş qiymədən hazırlanmış lülə kabab."],
+["kabab","Tərəvəz kababı",null,"terevez_kababi.png","Manqalda bişirilmiş mövsümi tərəvəzlər."],
+["kabab","Çolpa setka",20,"colpa_setka.png","Manqalda hazırlanmış çolpa."],
+["kabab","Quzu basdırma",10,"quzu_basdirma.png","Xüsusi marinad edilmiş quzu əti."],
+// İSTİ YEMƏKLƏR
+["isti","Quzu pörtləməsi",9,"quzu_portleme.png","Yumşaq quzu əti ilə hazırlanmış ev sayağı yemək."],
+["isti","Quzu xaşlama",9,"quzu_xaslama.png","Sulu və yumşaq quzu əti."],
+["isti","Şirəli dana",14,"sireli_dana.png","Şirəli dana əti."],
+["isti","Şirəli maça",9,"sireli_maca.png","Xüsusi üsulla hazırlanmış şirəli ət."],
+["isti","Düşonka",9,"dusonka.png","Ev sayağı ət yeməyi."],
+["isti","Qaymaqlı quzu",15,"qaymaqli_quzu.png","Qaymaqlı sousda hazırlanmış quzu əti."],
+["isti","Qaymaqlı can əti",15,"qaymaqlo_can.png","Yumşaq can əti və qaymaqlı sous."],
+["isti","Kefli beçə",20,"kefli_bece.png","Kefir əsaslı xüsusi sousda hazırlanmış beçə əti."],
+["isti","Qaymaqlı çolpa",23,"qaymaqli_colpa.png","Qaymaqlı sousda hazırlanmış çolpa."],
+["isti","Sac toyuq",23,"colpa_sac.png","Sacda tərəvəzlərlə hazırlanmış toyuq."],
+["isti","Sac quzu",28,"quzu_sac.png","Sacda hazırlanmış quzu əti."],
+["isti","Sac assorti",30,"assarti_sac.png","Müxtəlif ətlərin sacda hazırlanmış assortisi."],
+["isti","Tabaka çolpa",23,"tabaka_colpa.png","Klassik tabaka üsulu ilə hazırlanmış çolpa."],
+["isti","Tuşonka (ev sayağı)",9,"dusonka_evsayagi.png","Ev sayağı hazırlanmış yumşaq ət."],
+["isti","Çolpa çığırtma",23,"cigrtma_colpa.png","Çolpa, pomidor və yumurta ilə hazırlanır."],
+["isti","Quzu qovurma",14,"quzu_qovurma.png","Soğanla qovrulmuş quzu əti."],
+["isti","Şapalaq",17,"sapalaq.png","Manqalda hazırlanmış xüsusi ət yeməyi."],
+["isti","Ev sayağı kartof",5,"evsayagi_kartof.png","Ev sayağı qızardılmış kartof."],
+["isti","Turşulu maça",10,"tursulu_maca.png","Turşulu sousla hazırlanmış ət."],
+["isti","Çoban qovurma",15,"coban_qovurma.png","Tərəvəzlə, çoban üsulu ilə hazırlanmış qovurma."],
+["isti","Can əti qovurma",15,"qovurma_caneti.png","Yumşaq can əti ilə hazırlanmış qovurma."],
+["isti","Şirəli xoruz",null,"sireli_xoruz.png","Şirəli üsulla hazırlanmış xoruz."],
+["isti","Pomidor yumurta",5,"pomidor.png","Pomidor və yumurta ilə hazırlanmış milli yemək."],
+["isti","Turşulu can əti",null,"tursulu_caneti.png","Turşulu sousda hazırlanmış can əti."],
+// ŞORBALAR
+["soup","Çolpa supu",3,"toyuq_sup.png","Toyuq əti və tərəvəzlə hazırlanmış isti şorba."],
+["soup","Mərci supu",3,"merci.png","Qırmızı mərci ilə hazırlanmış şorba."],
+["soup","Düşbərə",4,"dusbere.png","Milli Azərbaycan mətbəxinin klassik düşbərəsi."],
+["soup","Borş",null,"bors.png","Ənənəvi tərəvəzli şorba."],
+// BALIQ
+["fish","Forel",25,"farel.png","Manqalda hazırlanmış forel balığı."],
+["fish","Çupra",20,"cupra.png","Manqalda bişirilmiş çupra."],
+["fish","Balıq nar qovurma",30,"qovurma_baliq.png","Müxtəlif balıqlardan hazırlanmış nar qovurma."],
+// SALATLAR
+["salad","Çoban salatı",null,"coban_salati.png","Pomidor, xiyar, göyərti və soğan."],
+["salad","Paytaxt salatı",null,"paytaxt.png","Ənənəvi Paytaxt salatı."],
+["salad","Mimoza",null,"mimoza.png","Qatlı salat."],
+["salad","Sacaq pendir",null,"sacaq_pendir.png","Sacda qızardılmış pendir."],
+["salad","Turşu assorti",null,"tursu_assorti.png","Müxtəlif turşular."],
+["salad","Pendir assorti",null,"pendir_assorti.png","Müxtəlif pendirlər."],
+["salad","Xiyar pomidor",null,"xiyar_pomidor.png","Təzə xiyar və pomidor."],
+["salad","Göyərti",null,"goyerti.png","Təzə göyərti assortisi."],
+["salad","Xiyar turşusu",null,"xiyar_tursusu.png","Xiyar turşusu."],
+["salad","Kələm turşu",null,"kelem.png","Kələm turşusu."],
+["salad","Baldırğan, çaşır turşu",null,"baldirgan.png","Milli turşu assortisi."],
+["salad","Qara zeytun / Ağ zeytun",null,"zeytun.png","Zeytun assortisi."],
+// SPİRTSİZ İÇKİLƏR
+["drink","Cola banka",3.5,"kkola_demir.png","330 ml."],
+["drink","Cola şüşə",4,"kola_suse.png","Şüşə Coca-Cola."],
+["drink","Fanta banka",3.5,"fanta_demir.png","330 ml."],
+["drink","Fanta şüşə",4,"fanta_suse.png","Şüşə Fanta."],
+["drink","Sprite banka",3.5,"sprite.png","330 ml."],
+["drink","Nataktari Duşes",3.5,"duses.png","Qazlı içki."],
+["drink","Nataktari Tərxun",3.5,"terxun.png","Qazlı içki."],
+["drink","Meyvə suyu 1L",5,"meyve_suyu.png","1 litr."],
+["drink","Kompot",6,"kompot.png","Ev sayağı kompot."],
+["drink","Sirab qazlı",3,"sirab_qazli.png","Mineral su."],
+["drink","Sirab qazsız",3,"sirab_qazsiz.png","Mineral su."],
+["drink","Cappy 0.5L",3.5,"cappy.png","0.5 litr."],
+["drink","Fuse Tea 0.5L",3.5,"fuse.png","0.5 litr."],
+["drink","Red Bull 250ml",7,"redbull.png","250 ml."],
+["drink","Şalgam acılı",4,"salgam_acili.png","Acılı şalgam."],
+["drink","Şalgam acısız",4,"salgam_acisisz.png","Acısız şalgam."],
+// SPİRTLİ İÇKİLƏR
+...[["Absolut","abslout"],["Russkiy Standart","ruskiy"],["Nemiroff Delikat","nemirof_delikat"],["Nemiroff De Luxe","nemirof_deluxe"],["Nemiroff Lex","nemirof_lex"],["Banketnaya","banketnaya"],["DaVinci","vinci"],["Moy Doktor","moy_doktor"],["Biostil","biostic"],["Yaraslav","yasvsya"],["One 1","one1"],["Moskva","moskva"]]
+  .map(a=>["alcohol",a[0],null,a[1]+".png","0.5L / 0.7L / 1L"]),
+["alcohol","Chivas Regal 18 Years",null,"civas_18.png","Viski."],
+["alcohol","Chivas Regal 12 Years",null,"civas_12.png","Viski."],
+["alcohol","Jameson",null,"jameson.png","Viski."],
+["alcohol","Jack Daniel's",null,"jekdaniels.png","Viski."],
+["alcohol","Texas",null,"texas.png","Viski."],
+["alcohol","Olmeca",null,"olmeca.png","Tekila."],
+["alcohol","Sierra",null,"sierra.png","Tekila."],
+["alcohol","Yeni Rakı",null,"yeni_raki.png","Rakı."],
+["alcohol","Beylerbeyi",null,"beylerbey.png","Rakı."],
+["alcohol","Jagermeister",null,"jagenmaster.png","Likör."],
+["alcohol","Meysəri Billuri",null,"meyseri_bullur.png","Şərab."],
+["alcohol","Mərcan",null,"meyseri_mercan.png","Şərab."],
+["alcohol","Sənəm",null,"meyseri_senem.png","Şərab."],
+["alcohol","Məxməri",null,"meyseri_mexmeri.png","Şərab."],
+["alcohol","Sədəf",null,"meyseri_sedef.png","Şərab."],
+["alcohol","Savalan kəmşirin",null,"savalan_kemsirin.png","Şərab."],
+["alcohol","Savalan turş",null,"savalan_turs.png","Şərab."],
+["alcohol","Xankəndi Rose",null,"xankendi_rose.png","Rose şərab."],
+["alcohol","Xankəndi Ağ Şərab",null,"xankendi_agserab.png","Ağ şərab."],
+["alcohol","Xankəndi Qırmızı Şərab",null,"xankendi_qirmizi.png","Qırmızı şərab."]
+];
+
+const menu = raw.map(r => ({category:r[0], name:r[1], price:r[2], image:"images/"+r[3], description:r[4]}));
+
+const categoryNames = {
+    kabab:"Kabablar", isti:"İsti yeməklər", soup:"Şorbalar", fish:"Balıqlar",
+    salad:"Salatlar", drink:"Spirtsiz içkilər", alcohol:"Spirtli içkilər"
+};
+
+function priceText(item){
+    return item.price !== null ? item.price.toFixed(2) + " AZN" : null;
+}
+
+function renderMenu(list = menu){
+    const container = document.getElementById("menu");
+    container.innerHTML = "";
+
+    if(list.length === 0){
+        container.innerHTML = '<div style="text-align:center;padding:50px 10px;color:#777"><h2>Məhsul tapılmadı</h2><p>Axtarış sözünü dəyişin.</p></div>';
+        return;
+    }
+
+    [...new Set(list.map(i => i.category))].forEach(category => {
+        const section = document.createElement("section");
+        section.className = "section";
+        section.innerHTML = '<h2 class="section-title">' + categoryNames[category] + '</h2>' +
+            (category === "alcohol" ? '<p class="note">18 yaşdan kiçiklərə spirtli içki satılmır.</p>' : '') +
+            '<div class="products"></div>';
+        const box = section.querySelector(".products");
+
+        list.filter(i => i.category === category).forEach(item => {
+            const card = document.createElement("div");
+            card.className = "card";
+            card.innerHTML =
+                '<img src="' + item.image + '" alt="' + item.name + '" loading="lazy" onerror="this.onerror=null;this.src=PLACEHOLDER">' +
+                '<div class="card-content"><h3>' + item.name + '</h3>' +
+                '<div class="description">' + item.description + '</div>' +
+                '<div class="price">' + (priceText(item) || '<span class="no-price">Qiymət soruşun</span>') + '</div></div>';
+            card.onclick = () => openModal(item);
+            box.appendChild(card);
+        });
+        container.appendChild(section);
+    });
+}
+
+function showCategory(category, button){
+    document.querySelectorAll(".categories button").forEach(b => b.classList.remove("active"));
+    button.classList.add("active");
+    document.getElementById("search").value = "";
+    renderMenu(category === "all" ? menu : menu.filter(i => i.category === category));
+}
+
+function searchProducts(){
+    const v = document.getElementById("search").value.toLowerCase().trim();
+    renderMenu(!v ? menu : menu.filter(i =>
+        i.name.toLowerCase().includes(v) || i.description.toLowerCase().includes(v)));
+}
+
+function openModal(item){
+    const img = document.getElementById("modalImage");
+    img.src = item.image;
+    document.getElementById("modalTitle").innerText = item.name;
+    document.getElementById("modalDescription").innerText = item.description;
+    document.getElementById("modalPrice").innerText = priceText(item) || "Qiymət soruşun";
+    document.getElementById("modal").style.display = "flex";
+}
+function closeModal(){ document.getElementById("modal").style.display = "none"; }
+function closeOutside(e){ if(e.target.id === "modal") closeModal(); }
+
+renderMenu(menu);
+</script>
+</body>
+</html>
